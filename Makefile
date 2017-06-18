@@ -8,7 +8,6 @@ MAKEFLAGS += --warn-undefined-variables
 GIT_COMMIT ?= $(shell git rev-parse --short HEAD)
 GIT_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
 WORKSPACE ?= $(shell pwd)
-VERSION ?= dev-build-not-for-release
 
 namespace ?= 0x74696d
 tag := $(shell basename $(GIT_BRANCH))
@@ -20,6 +19,8 @@ help:
 
 # ------------------------------------------------
 # Container builds
+
+VERSION ?= dev-build-not-for-release
 
 ## Builds the application container image
 build:
@@ -34,6 +35,41 @@ release:
 	docker tag $(image):$(tag) $(image):$(VERSION)
 	docker push $(image):$(VERSION)
 
+
+# ------------------------------------------------
+# Infrastructure
+
+INSTANCES ?= 3
+CONTAINERS ?= 6
+
+# note that the create-stack below assumes that we've already set up the
+# VPC and subnets, ssh keys, IAM roles, etc.
+
+## Launches an ECS stack; uses the branch as part of the name of the stack
+create-stack:
+	aws cloudformation create-stack \
+		--stack-name app-$(tag) \
+		--disable-rollback \
+		--template-body file://infra/ecs.yml \
+		--parameters ParameterKey=ContainerImage,ParameterValue=$(image):$(tag) \
+		--tags $(tag)
+
+## Updates the container on our ECS stack
+update-stack:
+	aws cloudformation update-stack \
+		--stack-name app-$(tag) \
+		--disable-rollback \
+		--template-body file://infra/ecs.yml \
+		--parameters ParameterKey=ContainerImage,ParameterValue=$(image):$(tag) \
+		ParameterKey=DesiredCapacity,ParameterValue=$(INSTANCES) \
+		--tags $(tag)
+
+## Increase the number of containers for app
+scale-app:
+	aws update-service \
+		--cluster app-$(tag) \
+		--service app \
+		--desired-count $(CONTAINERS)
 
 # ------------------------------------------------
 # Development
