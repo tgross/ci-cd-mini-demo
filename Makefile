@@ -40,9 +40,14 @@ release:
 
 ## Runs the app image in a local Docker container with your source code mounted to it.
 run:
-	docker run -d -p 5000:5000 \
+	docker run -d -p 5000:5000 --name app \
 		-v $(WORKSPACE)/src:/src \
+		-v $(WORKSPACE)/db:/db \
 		$(image):$(tag) python /src/app.py
+
+## Loads the schema in the local Docker container image.
+schema:
+	docker exec -i app sqlite3 /db/database.db < db/schema.sql
 
 ## Run the unit tests in a local Docker container with your source code mounted to it.
 test:
