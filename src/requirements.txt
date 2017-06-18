@@ -1,1 +1,4 @@
 flask==0.12.2
+
+# pure Python implementation of the client, compatible with Python3
+PyMySQL==0.7.11
