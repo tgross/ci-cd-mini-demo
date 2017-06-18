@@ -30,7 +30,9 @@ The following items are being treated as out-of-scope for this exercise but woul
 
 ## Build Workflow
 
-The Jenkins job `app` is configured to receive webhooks from GitHub via the [GitHub Pull Request Builder](https://wiki.jenkins-ci.org/display/JENKINS/GitHub+pull+request+builder+plugin) plugin. For each branch, the `app` job builds a container image and identifies it with both the git hash and the name of the branch (note that this is called "tagging" in Docker parlance but that's confusing in this context because git also has "tags"). This container image is then pushed to the Docker registry. Note that subsequent builds will update the Docker name (tag) for the branch to point to the current HEAD. For example:
+The Jenkins job `app` is configured to receive webhooks from GitHub via the [GitHub Pull Request Builder](https://wiki.jenkins-ci.org/display/JENKINS/GitHub+pull+request+builder+plugin) plugin. This plugin configures a "bot" behavior that makes a comment in each pull request to get approval to build the branch and run the tests. (This workflow is required for any open source application to avoid malicious builds; if the application were closed source we could simply have Jenkins build every branch.)
+
+For each branch, the `app` job builds a container image and identifies it with both the git hash and the name of the branch (note that this is called "tagging" in Docker parlance but that's confusing in this context because git also has "tags"). This container image is then pushed to the Docker registry. Note that subsequent builds will update the Docker name (tag) for the branch to point to the current HEAD. For example:
 
 ```
 # commit 'deadb33f' lands on branch 'myfeature'
