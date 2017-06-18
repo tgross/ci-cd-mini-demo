@@ -10,7 +10,7 @@ GIT_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
 WORKSPACE ?= $(shell pwd)
 
 namespace ?= 0x74696d
-tag := $(shell basename $(GIT_BRANCH))
+tag ?= $(shell basename $(GIT_BRANCH))
 image := $(namespace)/app
 
 ## Display this help message

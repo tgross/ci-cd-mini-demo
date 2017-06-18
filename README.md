@@ -30,7 +30,7 @@ The following items are being treated as out-of-scope for this exercise but woul
 
 ## Build Workflow
 
-The Jenkins job `app` is configured to receive webhooks from GitHub via the [GitHub Pull Request Builder](https://wiki.jenkins-ci.org/display/JENKINS/GitHub+pull+request+builder+plugin) plugin. This plugin configures a "bot" behavior that makes a comment in each pull request to get approval to build the branch and run the tests. (This workflow is required for any open source application to avoid malicious builds; if the application were closed source we could simply have Jenkins build every branch.)
+The Jenkins job `app` is configured to receive webhooks from GitHub via the [GitHub Pull Request Builder](https://wiki.jenkins-ci.org/display/JENKINS/GitHub+pull+request+builder+plugin) plugin. This plugin configures a "bot" behavior that makes a comment in each pull request to get approval to build the branch and run the tests. (This workflow is required for any open source application to avoid malicious builds; if the application were closed source we could simply have Jenkins build every branch.
 
 For each branch, the `app` job builds a container image and identifies it with both the git hash and the name of the branch (note that this is called "tagging" in Docker parlance but that's confusing in this context because git also has "tags"). This container image is then pushed to the Docker registry. Note that subsequent builds will update the Docker name (tag) for the branch to point to the current HEAD. For example:
 
@@ -54,3 +54,23 @@ myrepo/app   myfeature      8231e6122519
 ```
 
 This workflow works equally well for when features land on the `master` branch; this branch will be continuously deployed to production.
+
+## Testing and QA Deployments
+
+The `test.py` application in the source directory is a skeleton for running unit tests. These are run via `make test` as part of the Jenkins job configuration.
+
+By parameterizing the CloudFormation templates for ECS, each branch gets its own stack. Given appropriate AWS credentials, a Jenkins job (not shown here) can deploy that branch via `make create-stack`, which will create a fresh ECS stack for that branch. The job can then run any integration tests required against that stack.
+
+
+## Production Deployments
+
+The initial setup for the production deployment will be with `make create-stack`, identical to the QA deployment described above. Note the templates provided presuppose a VPC, subnets, security groups, etc. To update the deployment to a new version of the application, running `TAG=<githash> make update-stack` will update the ECS definition to the desired tag.
+
+
+## Alternative Design Options
+
+*Multiple Repositories:* this example uses a "monorepo" but in a case where we have many different microservices it may make more sense to split the repo up into the various services, each with their own `infra/` directory for application-specific infrastructure, and a separate repo used for shared infrastructure such as the AWS networking configuration, IAM roles, etc.
+
+*VM-based Deployment:* as an alternative to using Docker containers, the Jenkins job could use tools like Chef Zero and/or Packer to build an AWS Machine Image (AMI). The Jenkins job could then create a new Deployment Configuration based on that AMI. In that scenario, deployments would consist of updating the AutoScaling Group (ASG) with the new Deployment Configuration and rolling the instances out.
+
+*Scheduler-less Docker Deployment:* much of the complication of ECS (and Docker schedulers in general) is required because of port mapping. If container density is not a concern -- perhaps because the VM is sized to a single container or because a fixed group of containers is always deployed together snugly on the VM -- then we can take advantage of host networking rather than NAT, and this lets us treat the ASG much as we would in the VM-based deployment.
